@@ -1,0 +1,6 @@
+﻿node_modules/
+output/
+round*_gitdiff.patch
+round*_gitdiff_stat.txt
+round*_gitdiff_files.txt
+.DS_Store
