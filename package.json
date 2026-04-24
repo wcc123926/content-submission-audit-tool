@@ -1,0 +1,35 @@
+{
+  "name": "content-submission-audit-tool",
+  "version": "1.0.0",
+  "description": "本地内容提交审核工具 - 扫描 Markdown 文档、图片和表格文件",
+  "main": "src/index.js",
+  "bin": {
+    "cs-audit": "./bin/cli.js"
+  },
+  "scripts": {
+    "start": "node bin/cli.js",
+    "audit": "node bin/cli.js",
+    "server": "node src/server.js"
+  },
+  "keywords": [
+    "markdown",
+    "audit",
+    "content",
+    "scanner",
+    "documentation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "cheerio": "^1.0.0-rc.12",
+    "commander": "^11.1.0",
+    "express": "^4.18.2",
+    "gray-matter": "^4.0.3",
+    "marked": "^11.1.1"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>内容提交审核报告</title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="header">
+        <div class="container">
+          <h1>📋 内容提交审核报告</h1>
+          <p class="subtitle" id="scanTime">扫描时间: --</p>
+        </div>
+      </header>
+
+      <nav class="nav">
+        <div class="container">
+          <ul class="nav-tabs">
+            <li class="nav-tab active" data-tab="overview">
+              <span class="tab-icon">📊</span>
+              <span>概览</span>
+            </li>
+            <li class="nav-tab" data-tab="documents">
+              <span class="tab-icon">📄</span>
+              <span>文档列表</span>
+              <span class="badge" id="doc-count">0</span>
+            </li>
+            <li class="nav-tab" data-tab="images">
+              <span class="tab-icon">🖼️</span>
+              <span>图片资源</span>
+              <span class="badge" id="image-count">0</span>
+            </li>
+            <li class="nav-tab" data-tab="tables">
+              <span class="tab-icon">📊</span>
+              <span>表格文件</span>
+              <span class="badge" id="table-count">0</span>
+            </li>
+            <li class="nav-tab" data-tab="issues">
+              <span class="tab-icon">⚠️</span>
+              <span>问题清单</span>
+              <span class="badge warning" id="issue-count">0</span>
+            </li>
+          </ul>
+        </div>
+      </nav>
+
+      <main class="main">
+        <div class="container">
+          <section id="overview" class="tab-content active">
+            <h2>📊 统计概览</h2>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-icon">📄</div>
+                <div class="stat-info">
+                  <div class="stat-value" id="stat-docs">0</div>
+                  <div class="stat-label">Markdown 文档</div>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon">🖼️</div>
+                <div class="stat-info">
+                  <div class="stat-value" id="stat-images">0</div>
+                  <div class="stat-label">图片文件</div>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-info">
+                  <div class="stat-value" id="stat-tables">0</div>
+                  <div class="stat-label">表格文件</div>
+                </div>
+              </div>
+              <div class="stat-card warning">
+                <div class="stat-icon">⚠️</div>
+                <div class="stat-info">
+                  <div class="stat-value" id="stat-issues">0</div>
+                  <div class="stat-label">待处理问题</div>
+                </div>
+              </div>
+            </div>
+
+            <h3>📈 完成度统计</h3>
+            <div class="progress-section">
+              <div class="progress-item">
+                <div class="progress-header">
+                  <span class="progress-label">有封面图的文档</span>
+                  <span class="progress-value" id="cover-progress-text"
+                    >0/0 (0%)</span
+                  >
+                </div>
+                <div class="progress-bar">
+                  <div
+                    class="progress-fill"
+                    id="cover-progress"
+                    style="width: 0%"
+                  ></div>
+                </div>
+              </div>
+              <div class="progress-item">
+                <div class="progress-header">
+                  <span class="progress-label">有栏目信息的文档</span>
+                  <span class="progress-value" id="category-progress-text"
+                    >0/0 (0%)</span
+                  >
+                </div>
+                <div class="progress-bar">
+                  <div
+                    class="progress-fill"
+                    id="category-progress"
+                    style="width: 0%"
+                  ></div>
+                </div>
+              </div>
+              <div class="progress-item">
+                <div class="progress-header">
+                  <span class="progress-label">有状态信息的文档</span>
+                  <span class="progress-value" id="status-progress-text"
+                    >0/0 (0%)</span
+                  >
+                </div>
+                <div class="progress-bar">
+                  <div
+                    class="progress-fill"
+                    id="status-progress"
+                    style="width: 0%"
+                  ></div>
+                </div>
+              </div>
+            </div>
+
+            <h3>🏷️ 栏目分布</h3>
+            <div id="category-distribution" class="category-list">
+              <p class="empty-text">暂无数据</p>
+            </div>
+
+            <h3>📌 状态分布</h3>
+            <div id="status-distribution" class="status-list">
+              <p class="empty-text">暂无数据</p>
+            </div>
+          </section>
+
+          <section id="documents" class="tab-content">
+            <div class="filter-bar">
+              <div class="filter-group">
+                <label>筛选栏目:</label>
+                <select id="filter-category">
+                  <option value="">全部</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label>筛选状态:</label>
+                <select id="filter-status">
+                  <option value="">全部</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label>搜索:</label>
+                <input
+                  type="text"
+                  id="search-docs"
+                  placeholder="输入标题或路径搜索..."
+                />
+              </div>
+            </div>
+            <div id="documents-list" class="document-list">
+              <p class="empty-text">暂无文档</p>
+            </div>
+          </section>
+
+          <section id="images" class="tab-content">
+            <div class="filter-bar">
+              <div class="filter-group">
+                <label>图片类型:</label>
+                <select id="filter-image-type">
+                  <option value="">全部</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label>显示:</label>
+                <select id="filter-image-usage">
+                  <option value="">全部</option>
+                  <option value="used">已引用</option>
+                  <option value="unused">未引用</option>
+                </select>
+              </div>
+            </div>
+            <div id="images-list" class="image-grid">
+              <p class="empty-text">暂无图片</p>
+            </div>
+          </section>
+
+          <section id="tables" class="tab-content">
+            <div id="tables-list" class="table-list">
+              <p class="empty-text">暂无表格文件</p>
+            </div>
+          </section>
+
+          <section id="issues" class="tab-content">
+            <div class="filter-bar">
+              <div class="filter-group">
+                <label>问题类型:</label>
+                <select id="filter-issue-type">
+                  <option value="">全部</option>
+                </select>
+              </div>
+            </div>
+            <div id="issues-list" class="issue-list">
+              <p class="empty-text">暂无问题</p>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <div id="modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modal-title">详情</h3>
+          <button class="modal-close" id="modal-close">&times;</button>
+        </div>
+        <div class="modal-body" id="modal-body"></div>
+      </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+  </body>
+</html>
