@@ -96,6 +96,23 @@ function detectIssues(markdowns, images) {
   const allImagePaths = new Set(images.map(i => i.absolutePath.toLowerCase()));
   
   markdowns.forEach(doc => {
+    if (doc.coverImage && !doc.coverImage.startsWith('http://') && !doc.coverImage.startsWith('https://')) {
+      const absoluteImgPath = path.resolve(path.dirname(doc.filePath), doc.coverImage);
+      if (!allImagePaths.has(absoluteImgPath.toLowerCase())) {
+        issues.push({
+          type: 'missing_image',
+          file: doc.relativePath,
+          message: `引用的封面图不存在: ${doc.coverImage}`,
+          severity: 'error',
+          details: {
+            referencedImage: doc.coverImage,
+            absolutePath: absoluteImgPath,
+            isCover: true
+          }
+        });
+      }
+    }
+    
     if (doc.images && doc.images.length > 0) {
       doc.images.forEach(imgRef => {
         const absoluteImgPath = path.resolve(path.dirname(doc.filePath), imgRef);
