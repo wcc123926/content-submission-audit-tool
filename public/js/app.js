@@ -2,6 +2,8 @@ document.addEventListener('DOMContentLoaded', function() {
   let reportData = null;
   let currentDirectory = null;
   let isScanning = false;
+  let toastTimeout = null;
+  let recentPathsCache = [];
   
   init();
   
@@ -15,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (response.ok) {
         reportData = await response.json();
         if (reportData && reportData.statistics) {
-          showResults();
+          showResults(true);
           renderReport();
         }
       }
@@ -72,6 +74,176 @@ document.addEventListener('DOMContentLoaded', function() {
     if (filterIssueSeverity) filterIssueSeverity.addEventListener('change', filterIssues);
     
     initModal();
+    initFolderModal();
+  }
+  
+  function initFolderModal() {
+    const folderModal = document.getElementById('folder-modal');
+    const folderModalClose = document.getElementById('folder-modal-close');
+    const folderModalCancel = document.getElementById('folder-modal-cancel');
+    const folderModalConfirm = document.getElementById('folder-modal-confirm');
+    const pasteBtn = document.getElementById('paste-btn');
+    const folderPathInput = document.getElementById('folder-path-input');
+    
+    if (!folderModal) return;
+    
+    if (folderModalClose) {
+      folderModalClose.addEventListener('click', () => {
+        closeFolderModal();
+      });
+    }
+    
+    if (folderModalCancel) {
+      folderModalCancel.addEventListener('click', () => {
+        closeFolderModal();
+      });
+    }
+    
+    folderModal.addEventListener('click', (e) => {
+      if (e.target === folderModal) {
+        closeFolderModal();
+      }
+    });
+    
+    if (pasteBtn) {
+      pasteBtn.addEventListener('click', async () => {
+        try {
+          const text = await navigator.clipboard.readText();
+          if (text) {
+            folderPathInput.value = text.replace(/^"|"$/g, '').trim();
+            validateFolderPath();
+            showToast('已粘贴路径', 'success');
+          } else {
+            showToast('剪贴板为空', 'warning');
+          }
+        } catch (e) {
+          showToast('无法访问剪贴板，请手动粘贴', 'warning');
+          folderPathInput.focus();
+        }
+      });
+    }
+    
+    if (folderPathInput) {
+      folderPathInput.addEventListener('input', validateFolderPath);
+      folderPathInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (folderPathInput.value.trim()) {
+            confirmAndScan();
+          }
+        }
+      });
+    }
+    
+    if (folderModalConfirm) {
+      folderModalConfirm.addEventListener('click', confirmAndScan);
+    }
+  }
+  
+  function handleBrowse() {
+    openFolderModal();
+  }
+  
+  function openFolderModal() {
+    const folderModal = document.getElementById('folder-modal');
+    const folderPathInput = document.getElementById('folder-path-input');
+    const quickPathsSection = document.getElementById('quick-paths-section');
+    const quickPathsList = document.getElementById('quick-paths-list');
+    
+    if (!folderModal) return;
+    
+    if (folderPathInput) {
+      const currentPath = document.getElementById('directory-input')?.value || '';
+      folderPathInput.value = currentPath;
+      validateFolderPath();
+    }
+    
+    if (quickPathsSection && quickPathsList && recentPathsCache.length > 0) {
+      quickPathsSection.style.display = 'block';
+      
+      let html = '';
+      recentPathsCache.forEach((path, index) => {
+        html += `
+          <button class="quick-path-item" data-path="${escapeHtml(path)}" title="${escapeHtml(path)}">
+            <span class="quick-path-icon">🕐</span>
+            <span class="quick-path-text">${escapeHtml(truncatePath(path, 45))}</span>
+          </button>
+        `;
+      });
+      quickPathsList.innerHTML = html;
+      
+      quickPathsList.querySelectorAll('.quick-path-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const path = item.dataset.path;
+          if (folderPathInput) {
+            folderPathInput.value = path;
+            validateFolderPath();
+          }
+        });
+      });
+    } else if (quickPathsSection) {
+      quickPathsSection.style.display = 'none';
+    }
+    
+    folderModal.classList.add('active');
+    
+    if (folderPathInput) {
+      setTimeout(() => folderPathInput.focus(), 100);
+    }
+  }
+  
+  function closeFolderModal() {
+    const folderModal = document.getElementById('folder-modal');
+    if (folderModal) {
+      folderModal.classList.remove('active');
+    }
+  }
+  
+  function validateFolderPath() {
+    const folderPathInput = document.getElementById('folder-path-input');
+    const pathValidation = document.getElementById('path-validation');
+    const folderModalConfirm = document.getElementById('folder-modal-confirm');
+    
+    if (!folderPathInput || !pathValidation) return;
+    
+    const path = folderPathInput.value.trim();
+    
+    if (!path) {
+      pathValidation.innerHTML = '';
+      if (folderModalConfirm) folderModalConfirm.disabled = true;
+      return;
+    }
+    
+    const invalidChars = /[<>:"|?*]/;
+    const hasInvalidChars = invalidChars.test(path);
+    
+    if (hasInvalidChars) {
+      pathValidation.innerHTML = '<span class="validation-error">❌ 路径包含非法字符</span>';
+      if (folderModalConfirm) folderModalConfirm.disabled = true;
+    } else {
+      pathValidation.innerHTML = '<span class="validation-success">✓ 路径格式有效</span>';
+      if (folderModalConfirm) folderModalConfirm.disabled = false;
+    }
+  }
+  
+  function confirmAndScan() {
+    const folderPathInput = document.getElementById('folder-path-input');
+    const directoryInput = document.getElementById('directory-input');
+    
+    if (!folderPathInput) return;
+    
+    const path = folderPathInput.value.trim();
+    if (!path) {
+      showToast('请输入文件夹路径', 'error');
+      return;
+    }
+    
+    if (directoryInput) {
+      directoryInput.value = path;
+    }
+    
+    closeFolderModal();
+    handleScan();
   }
   
   async function loadRecentPaths() {
@@ -80,6 +252,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const data = await response.json();
       
       if (data.success && data.paths && data.paths.length > 0) {
+        recentPathsCache = data.paths;
         renderRecentPaths(data.paths);
       }
     } catch (e) {
@@ -134,9 +307,9 @@ document.addEventListener('DOMContentLoaded', function() {
     currentDirectory = directory;
     isScanning = true;
     
-    updateScanButtonState(true);
+    updateScanButtonState('scanning');
     hideStatus();
-    hideResults();
+    hideResults(true);
     
     showStatus('scanning', '正在扫描...', '请稍候，正在分析目录内容...');
     
@@ -153,36 +326,35 @@ document.addEventListener('DOMContentLoaded', function() {
       
       if (data.success) {
         if (data.status === 'empty_directory') {
+          updateScanButtonState('empty');
           showStatus('empty', '目录为空', data.message);
           showToast(data.message, 'warning');
         } else if (data.report) {
           reportData = data.report;
-          showResults();
-          renderReport();
           await loadRecentPaths();
-          showToast('扫描完成！', 'success');
+          updateScanButtonState('success');
+          showResults(true);
+          renderReport();
+          showToast('扫描完成！发现 ' + data.report.statistics.totalMarkdowns + ' 个文档', 'success');
         }
       } else {
         if (data.status === 'invalid_path') {
+          updateScanButtonState('error');
           showStatus('error', '无效路径', data.message);
         } else {
+          updateScanButtonState('error');
           showStatus('error', '扫描失败', data.message);
         }
         showToast(data.message, 'error');
       }
       
     } catch (error) {
+      updateScanButtonState('error');
       showStatus('error', '扫描失败', '网络错误: ' + error.message);
       showToast('扫描失败: ' + error.message, 'error');
     } finally {
       isScanning = false;
-      updateScanButtonState(false);
     }
-  }
-  
-  function handleBrowse() {
-    showToast('请手动输入目录路径，或选择最近路径', 'info');
-    document.getElementById('directory-input').focus();
   }
   
   async function handleSaveReport() {
@@ -212,21 +384,47 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  function updateScanButtonState(scanning) {
+  function updateScanButtonState(state) {
     const scanBtn = document.getElementById('scan-btn');
     const scanIcon = document.getElementById('scan-icon');
     const scanText = document.getElementById('scan-text');
     
-    if (scanning) {
-      scanBtn.disabled = true;
-      scanBtn.classList.add('btn-loading');
-      scanIcon.textContent = '⏳';
-      scanText.textContent = '扫描中...';
-    } else {
-      scanBtn.disabled = false;
-      scanBtn.classList.remove('btn-loading');
-      scanIcon.textContent = '🔍';
-      scanText.textContent = '开始扫描';
+    if (!scanBtn || !scanIcon || !scanText) return;
+    
+    scanBtn.classList.remove('btn-loading', 'btn-success', 'btn-error');
+    scanBtn.disabled = false;
+    
+    switch (state) {
+      case 'scanning':
+        scanBtn.disabled = true;
+        scanBtn.classList.add('btn-loading');
+        scanIcon.textContent = '⏳';
+        scanText.textContent = '扫描中...';
+        break;
+      case 'success':
+        scanBtn.classList.add('btn-success');
+        scanIcon.textContent = '✅';
+        scanText.textContent = '扫描完成';
+        setTimeout(() => {
+          scanBtn.classList.remove('btn-success');
+          scanIcon.textContent = '🔍';
+          scanText.textContent = '开始扫描';
+        }, 2000);
+        break;
+      case 'error':
+      case 'empty':
+        scanBtn.classList.add('btn-error');
+        scanIcon.textContent = '❌';
+        scanText.textContent = '扫描失败';
+        setTimeout(() => {
+          scanBtn.classList.remove('btn-error');
+          scanIcon.textContent = '🔍';
+          scanText.textContent = '开始扫描';
+        }, 2000);
+        break;
+      default:
+        scanIcon.textContent = '🔍';
+        scanText.textContent = '开始扫描';
     }
   }
   
@@ -236,6 +434,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const titleEl = document.getElementById('status-title');
     const messageEl = document.getElementById('status-message');
     const actionEl = document.getElementById('status-action');
+    
+    if (!panel) return;
     
     const icons = {
       scanning: '⏳',
@@ -256,49 +456,71 @@ document.addEventListener('DOMContentLoaded', function() {
     panel.className = 'status-panel ' + (classes[type] || '');
     panel.style.display = 'block';
     
-    icon.textContent = icons[type] || 'ℹ️';
-    titleEl.textContent = title;
-    messageEl.textContent = message;
+    if (icon) icon.textContent = icons[type] || 'ℹ️';
+    if (titleEl) titleEl.textContent = title;
+    if (messageEl) messageEl.textContent = message;
     
-    actionEl.innerHTML = '';
-    
-    if (type === 'empty' || type === 'error' || type === 'invalid_path') {
-      const retryBtn = document.createElement('button');
-      retryBtn.className = 'btn btn-outline btn-sm';
-      retryBtn.innerHTML = '<span class="btn-icon">🔄</span> 重试';
-      retryBtn.addEventListener('click', () => {
-        document.getElementById('directory-input').focus();
-        document.getElementById('directory-input').select();
-      });
-      actionEl.appendChild(retryBtn);
+    if (actionEl) {
+      actionEl.innerHTML = '';
+      
+      if (type === 'empty' || type === 'error' || type === 'invalid_path') {
+        const retryBtn = document.createElement('button');
+        retryBtn.className = 'btn btn-outline btn-sm';
+        retryBtn.innerHTML = '<span class="btn-icon">📁</span> 重新选择';
+        retryBtn.addEventListener('click', () => {
+          hideStatus();
+          openFolderModal();
+        });
+        actionEl.appendChild(retryBtn);
+      }
     }
   }
   
   function hideStatus() {
     const panel = document.getElementById('status-panel');
     if (panel) {
-      panel.style.display = 'none';
+      panel.classList.add('fade-out');
+      setTimeout(() => {
+        panel.style.display = 'none';
+        panel.classList.remove('fade-out');
+      }, 200);
     }
   }
   
-  function showResults() {
+  function showResults(animate = false) {
     const resultsSection = document.getElementById('results-section');
     const saveReportBtn = document.getElementById('save-report-btn');
     
     if (resultsSection) {
-      resultsSection.style.display = 'block';
+      if (animate) {
+        resultsSection.style.display = 'block';
+        resultsSection.classList.add('fade-in');
+        setTimeout(() => {
+          resultsSection.classList.remove('fade-in');
+        }, 300);
+      } else {
+        resultsSection.style.display = 'block';
+      }
     }
     if (saveReportBtn) {
       saveReportBtn.style.display = 'inline-flex';
     }
   }
   
-  function hideResults() {
+  function hideResults(animate = false) {
     const resultsSection = document.getElementById('results-section');
     const saveReportBtn = document.getElementById('save-report-btn');
     
     if (resultsSection) {
-      resultsSection.style.display = 'none';
+      if (animate) {
+        resultsSection.classList.add('fade-out');
+        setTimeout(() => {
+          resultsSection.style.display = 'none';
+          resultsSection.classList.remove('fade-out');
+        }, 200);
+      } else {
+        resultsSection.style.display = 'none';
+      }
     }
     if (saveReportBtn) {
       saveReportBtn.style.display = 'none';
@@ -309,6 +531,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const toast = document.getElementById('toast');
     const icon = document.getElementById('toast-icon');
     const msg = document.getElementById('toast-message');
+    
+    if (!toast || !icon || !msg) return;
     
     const icons = {
       success: '✅',
@@ -328,11 +552,19 @@ document.addEventListener('DOMContentLoaded', function() {
     icon.textContent = icons[type] || 'ℹ️';
     msg.textContent = message;
     
-    toast.classList.add('toast-show');
+    toast.classList.remove('toast-show');
     
-    setTimeout(() => {
+    if (toastTimeout) {
+      clearTimeout(toastTimeout);
+    }
+    
+    requestAnimationFrame(() => {
+      toast.classList.add('toast-show');
+    });
+    
+    toastTimeout = setTimeout(() => {
       toast.classList.remove('toast-show');
-    }, 3000);
+    }, 3500);
   }
   
   function renderReport() {
@@ -369,7 +601,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const textEl = document.getElementById(`${type}-progress-text`);
     
     if (progressEl) {
-      progressEl.style.width = percentage + '%';
+      setTimeout(() => {
+        progressEl.style.width = percentage + '%';
+      }, 100);
     }
     if (textEl) {
       textEl.textContent = `${current}/${total} (${percentage}%)`;
@@ -397,13 +631,23 @@ document.addEventListener('DOMContentLoaded', function() {
             <span class="distribution-count">${count} 篇 (${percentage}%)</span>
           </div>
           <div class="distribution-bar">
-            <div class="distribution-fill" style="width: ${percentage}%"></div>
+            <div class="distribution-fill" style="width: 0%"></div>
           </div>
         </div>
       `;
     });
     
     container.innerHTML = html;
+    
+    setTimeout(() => {
+      Object.entries(distribution).forEach(([category, count], index) => {
+        const percentage = Math.round((count / total) * 100);
+        const fills = container.querySelectorAll('.distribution-fill');
+        if (fills[index]) {
+          fills[index].style.width = percentage + '%';
+        }
+      });
+    }, 150);
   }
   
   function renderStatusDistribution(distribution) {
