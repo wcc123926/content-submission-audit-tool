@@ -19,6 +19,11 @@ async function scanDirectory(targetDir) {
   
   const allReferencedImages = new Set();
   markdowns.forEach(doc => {
+    if (doc.coverImage && !doc.coverImage.startsWith('http://') && !doc.coverImage.startsWith('https://')) {
+      const absoluteImgPath = path.resolve(path.dirname(doc.filePath), doc.coverImage);
+      allReferencedImages.add(absoluteImgPath.toLowerCase());
+    }
+    
     if (doc.images) {
       doc.images.forEach(img => {
         const absoluteImgPath = path.resolve(path.dirname(doc.filePath), img);
@@ -34,6 +39,16 @@ async function scanDirectory(targetDir) {
   }));
   
   markdowns.forEach(doc => {
+    if (doc.coverImage && !doc.coverImage.startsWith('http://') && !doc.coverImage.startsWith('https://')) {
+      const absoluteImgPath = path.resolve(path.dirname(doc.filePath), doc.coverImage);
+      const imageIndex = images.findIndex(i => 
+        i.absolutePath.toLowerCase() === absoluteImgPath.toLowerCase()
+      );
+      if (imageIndex !== -1) {
+        images[imageIndex].referencedBy.push(doc.relativePath);
+      }
+    }
+    
     if (doc.images) {
       doc.images.forEach(img => {
         const absoluteImgPath = path.resolve(path.dirname(doc.filePath), img);
