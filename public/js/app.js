@@ -669,11 +669,142 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
+  let isSaving = false;
+
+  function updateSaveButtonState(state) {
+    const saveBtn = document.getElementById('save-report-btn');
+    if (!saveBtn) return;
+    
+    saveBtn.classList.remove('btn-loading', 'btn-success', 'btn-error');
+    saveBtn.disabled = false;
+    
+    const btnIcon = saveBtn.querySelector('.btn-icon');
+    const btnText = saveBtn.querySelector('span:not(.btn-icon)');
+    
+    switch (state) {
+      case 'loading':
+        isSaving = true;
+        saveBtn.disabled = true;
+        saveBtn.classList.add('btn-loading');
+        if (btnIcon) btnIcon.textContent = '⏳';
+        if (btnText) btnText.textContent = '保存中...';
+        break;
+      case 'success':
+        saveBtn.classList.add('btn-success');
+        if (btnIcon) btnIcon.textContent = '✅';
+        if (btnText) btnText.textContent = '保存成功';
+        setTimeout(() => {
+          saveBtn.classList.remove('btn-success');
+          if (btnIcon) btnIcon.textContent = '💾';
+          if (btnText) btnText.textContent = '保存报告';
+          isSaving = false;
+        }, 3000);
+        break;
+      case 'error':
+        saveBtn.classList.add('btn-error');
+        if (btnIcon) btnIcon.textContent = '❌';
+        if (btnText) btnText.textContent = '保存失败';
+        setTimeout(() => {
+          saveBtn.classList.remove('btn-error');
+          if (btnIcon) btnIcon.textContent = '💾';
+          if (btnText) btnText.textContent = '保存报告';
+          isSaving = false;
+        }, 3000);
+        break;
+      default:
+        if (btnIcon) btnIcon.textContent = '💾';
+        if (btnText) btnText.textContent = '保存报告';
+        isSaving = false;
+    }
+  }
+
+  function showSaveSuccessDialog(data) {
+    const filesList = data.files.map(f => {
+      const typeLabel = f.type === 'html' ? 'HTML 报告（可打印为PDF）' : 'JSON 数据文件';
+      return `<div class="saved-file-item">
+        <span class="saved-file-icon">${f.type === 'html' ? '🌐' : '📄'}</span>
+        <div class="saved-file-info">
+          <span class="saved-file-name">${f.name}</span>
+          <span class="saved-file-type">${typeLabel}</span>
+        </div>
+      </div>`;
+    }).join('');
+
+    const modalHtml = `
+      <div id="save-success-modal" class="modal active" style="z-index: 3000;">
+        <div class="modal-content" style="max-width: 520px;">
+          <div class="modal-header" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, transparent 100%); border-bottom-color: rgba(16, 185, 129, 0.3);">
+            <h3 style="display: flex; align-items: center; gap: 0.5rem;">
+              <span style="font-size: 1.5rem;">✅</span>
+              报告保存成功
+            </h3>
+            <button class="modal-close" onclick="document.getElementById('save-success-modal').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 1.5rem;">
+            <div style="margin-bottom: 1rem;">
+              <div style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 1rem; background: rgba(99, 102, 241, 0.08); border-radius: 8px; border-left: 3px solid #6366f1;">
+                <span style="font-size: 1.25rem;">📁</span>
+                <div>
+                  <div style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.25rem;">保存位置</div>
+                  <div style="font-family: 'Fira Code', Consolas, Monaco, monospace; font-size: 0.875rem; word-break: break-all; color: #f8fafc;">${data.outputDir}</div>
+                </div>
+              </div>
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+              <div style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem; color: #94a3b8;">已生成的文件</div>
+              <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                ${filesList}
+              </div>
+            </div>
+            
+            <div style="padding: 1rem; background: rgba(245, 158, 11, 0.08); border-radius: 8px; border-left: 3px solid #f59e0b;">
+              <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+                <span style="font-size: 1.25rem;">💡</span>
+                <div>
+                  <div style="font-weight: 600; margin-bottom: 0.25rem; color: #f8fafc;">关于 PDF 报告</div>
+                  <div style="font-size: 0.8125rem; color: #94a3b8; line-height: 1.6;">
+                    由于浏览器安全限制，无法直接生成 PDF 文件。您可以：<br>
+                    1. 打开 HTML 报告文件<br>
+                    2. 按 <kbd style="display: inline-block; padding: 0.125rem 0.375rem; background: #334155; border: 1px solid #475569; border-radius: 4px; font-family: monospace; font-size: 0.75rem; margin: 0 0.125rem;">Ctrl</kbd> + <kbd style="display: inline-block; padding: 0.125rem 0.375rem; background: #334155; border: 1px solid #475569; border-radius: 4px; font-family: monospace; font-size: 0.75rem; margin: 0 0.125rem;">P</kbd><br>
+                    3. 选择"保存为 PDF"即可
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(59, 130, 246, 0.05); border-radius: 6px; font-size: 0.75rem; color: #64748b; line-height: 1.5;">
+              <strong>ℹ️ 提示：</strong>浏览器出于安全考虑，无法直接访问本地文件系统的完整路径。以上路径信息由服务器端生成，您可以在文件资源管理器中手动打开该目录查看报告文件。
+            </div>
+          </div>
+          <div class="modal-footer" style="padding: 1rem 1.5rem; border-top: 1px solid #334155; display: flex; justify-content: flex-end; gap: 0.75rem;">
+            <button class="btn btn-outline" onclick="document.getElementById('save-success-modal').remove();">知道了</button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    const modal = document.getElementById('save-success-modal');
+    if (modal) {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.remove();
+        }
+      });
+    }
+  }
+
   async function handleSaveReport() {
+    if (isSaving) return;
+    
     if (!reportData) {
-      showToast('没有可保存的报告', 'error');
+      showToast('没有可保存的报告，请先扫描目录', 'error');
       return;
     }
+    
+    updateSaveButtonState('loading');
     
     try {
       const response = await fetch('/api/save-report', {
@@ -684,15 +815,34 @@ document.addEventListener('DOMContentLoaded', function() {
         body: JSON.stringify({ outputPath: './output' })
       });
       
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        throw new Error('服务器返回格式错误，请检查服务器状态');
+      }
       
       if (data.success) {
-        showToast('报告已保存到: ' + data.path, 'success');
+        updateSaveButtonState('success');
+        showSaveSuccessDialog(data);
+        showToast('报告保存成功！', 'success');
       } else {
-        showToast(data.message, 'error');
+        updateSaveButtonState('error');
+        showToast(data.message || '保存失败', 'error');
       }
     } catch (error) {
-      showToast('保存失败: ' + error.message, 'error');
+      updateSaveButtonState('error');
+      
+      let errorMessage = '保存失败';
+      if (error.message.includes('Failed to fetch')) {
+        errorMessage = '网络连接失败，请检查服务器是否正常运行';
+      } else if (error.message.includes('格式错误')) {
+        errorMessage = error.message;
+      } else {
+        errorMessage = error.message;
+      }
+      
+      showToast(errorMessage, 'error');
     }
   }
   
@@ -839,12 +989,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  function showToast(message, type = 'info') {
+  function showToast(message, type = 'info', options = {}) {
     const toast = document.getElementById('toast');
     const icon = document.getElementById('toast-icon');
     const msg = document.getElementById('toast-message');
     
     if (!toast || !icon || !msg) return;
+    
+    const { duration = 3500, closable = true, showProgress = true } = options;
     
     const icons = {
       success: '✅',
@@ -864,6 +1016,46 @@ document.addEventListener('DOMContentLoaded', function() {
     icon.textContent = icons[type] || 'ℹ️';
     msg.textContent = message;
     
+    let closeBtn = toast.querySelector('.toast-close-btn');
+    if (closable) {
+      if (!closeBtn) {
+        closeBtn = document.createElement('button');
+        closeBtn.className = 'toast-close-btn';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.title = '关闭';
+        closeBtn.addEventListener('click', () => {
+          toast.classList.remove('toast-show');
+          if (toastTimeout) {
+            clearTimeout(toastTimeout);
+          }
+        });
+        toast.appendChild(closeBtn);
+      }
+      closeBtn.style.display = 'flex';
+    } else if (closeBtn) {
+      closeBtn.style.display = 'none';
+    }
+    
+    let progressBar = toast.querySelector('.toast-progress');
+    if (showProgress && duration > 0) {
+      if (!progressBar) {
+        progressBar = document.createElement('div');
+        progressBar.className = 'toast-progress';
+        progressBar.innerHTML = '<div class="toast-progress-bar"></div>';
+        toast.appendChild(progressBar);
+      }
+      
+      const bar = progressBar.querySelector('.toast-progress-bar');
+      if (bar) {
+        bar.style.animation = 'none';
+        bar.offsetHeight;
+        bar.style.animation = `toastProgress ${duration}ms linear forwards`;
+      }
+      progressBar.style.display = 'block';
+    } else if (progressBar) {
+      progressBar.style.display = 'none';
+    }
+    
     toast.classList.remove('toast-show');
     
     if (toastTimeout) {
@@ -874,9 +1066,11 @@ document.addEventListener('DOMContentLoaded', function() {
       toast.classList.add('toast-show');
     });
     
-    toastTimeout = setTimeout(() => {
-      toast.classList.remove('toast-show');
-    }, 3500);
+    if (duration > 0) {
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('toast-show');
+      }, duration);
+    }
   }
   
   function renderReport() {

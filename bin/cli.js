@@ -40,8 +40,16 @@ program
       
       printConsoleReport(report);
       
-      const reportPath = await saveReport(report, options.output);
-      console.log(chalk.green(`\n✓ 报告已保存到: ${reportPath}\n`));
+      const result = await saveReport(report, options.output);
+      console.log(chalk.green(`\n✓ 报告已保存`));
+      console.log(chalk.gray(`  保存位置: ${result.outputDir}`));
+      console.log(chalk.gray(`  生成文件:`));
+      result.files.forEach(file => {
+        const icon = file.type === 'html' ? '🌐' : '📄';
+        const desc = file.type === 'html' ? 'HTML 报告（可打印为PDF）' : 'JSON 数据文件';
+        console.log(chalk.gray(`    ${icon} ${file.name} - ${desc}`));
+      });
+      console.log('');
       
       if (options.server !== false) {
         const port = parseInt(options.port);

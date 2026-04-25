@@ -159,18 +159,25 @@ function startServer(port, initialReport) {
       }
       
       const { outputPath = './output' } = req.body;
-      const savedPath = await saveReport(currentReport, outputPath);
+      const result = await saveReport(currentReport, outputPath);
       
       res.json({
         success: true,
         message: '报告已保存',
-        path: savedPath
+        outputDir: result.outputDir,
+        timestamp: result.timestamp,
+        files: result.files,
+        paths: {
+          json: result.jsonPath,
+          html: result.htmlPath
+        }
       });
       
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: '保存报告失败: ' + error.message
+        message: '保存报告失败: ' + error.message,
+        error: error.stack
       });
     }
   });
