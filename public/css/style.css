@@ -1196,11 +1196,20 @@ h5 {
   color: var(--text-muted);
 }
 
-.input-actions {
-  position: absolute;
-  right: 0.5rem;
-  top: 50%;
-  transform: translateY(-50%);
+.browse-btn {
+  padding: 0.75rem 1.25rem;
+  border: 2px solid var(--primary-color);
+  background-color: transparent;
+  color: var(--primary-color);
+  font-weight: 600;
+  transition: all var(--transition-normal);
+}
+
+.browse-btn:hover:not(:disabled) {
+  background-color: var(--primary-color);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.3);
 }
 
 .btn {
@@ -1786,58 +1795,48 @@ h5 {
   margin-bottom: 1.5rem;
 }
 
-.help-step {
+.help-tip {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-  background-color: var(--bg-tertiary);
+  gap: 0.75rem;
+  padding: 1rem;
+  background-color: rgba(99, 102, 241, 0.08);
   border-radius: var(--radius-md);
   border-left: 3px solid var(--primary-color);
 }
 
-.help-step:last-child {
-  margin-bottom: 0;
+.help-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
 }
 
-.step-number {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  min-width: 1.75rem;
-  border-radius: 50%;
-  background-color: var(--primary-color);
-  color: white;
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.step-content h4 {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 0.25rem 0;
-}
-
-.step-content p {
+.help-text {
   font-size: 0.8125rem;
   color: var(--text-secondary);
-  margin: 0;
   line-height: 1.6;
 }
 
-.step-content kbd {
+.help-text strong {
+  color: var(--text-primary);
+}
+
+.help-text kbd {
   display: inline-block;
   padding: 0.125rem 0.5rem;
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   font-family: 'Fira Code', Consolas, Monaco, monospace;
   font-size: 0.75rem;
   color: var(--text-primary);
   margin: 0 0.125rem;
+}
+
+.empty-paths-text {
+  text-align: center;
+  padding: 1rem;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  font-style: italic;
 }
 
 .folder-input-section {
