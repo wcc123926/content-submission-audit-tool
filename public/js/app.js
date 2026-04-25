@@ -718,67 +718,120 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  function showSaveSuccessDialog(data) {
-    const filesList = data.files.map(f => {
-      const typeLabel = f.type === 'html' ? 'HTML 报告（可打印为PDF）' : 'JSON 数据文件';
-      return `<div class="saved-file-item">
-        <span class="saved-file-icon">${f.type === 'html' ? '🌐' : '📄'}</span>
-        <div class="saved-file-info">
-          <span class="saved-file-name">${f.name}</span>
-          <span class="saved-file-type">${typeLabel}</span>
+  function showSaveResultModal(options) {
+    const { 
+      success, 
+      title, 
+      message, 
+      outputDir, 
+      files, 
+      errorDetails,
+      showPdfGuide = false 
+    } = options;
+
+    const existingModal = document.getElementById('save-result-modal');
+    if (existingModal) {
+      existingModal.remove();
+    }
+
+    let filesHtml = '';
+    if (files && files.length > 0) {
+      filesHtml = files.map(f => {
+        const typeLabel = f.type === 'html' ? 'HTML 报告（可打印为 PDF）' : 'JSON 数据文件';
+        const icon = f.type === 'html' ? '🌐' : '📄';
+        return `<div class="saved-file-item">
+          <span class="saved-file-icon">${icon}</span>
+          <div class="saved-file-info">
+            <span class="saved-file-name">${escapeHtml(f.name)}</span>
+            <span class="saved-file-type">${typeLabel}</span>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    let pdfGuideHtml = '';
+    if (showPdfGuide && success) {
+      pdfGuideHtml = `
+        <div class="info-box warning-box">
+          <span class="info-box-icon">💡</span>
+          <div class="info-box-content">
+            <div class="info-box-title">如何生成 PDF 报告</div>
+            <div class="info-box-text">
+              由于浏览器安全限制，无法直接生成 PDF 文件。您可以：<br>
+              1. 在文件资源管理器中打开 HTML 报告文件<br>
+              2. 按 <kbd>Ctrl</kbd> + <kbd>P</kbd> 打开打印对话框<br>
+              3. 选择"保存为 PDF"即可
+            </div>
+          </div>
         </div>
-      </div>`;
-    }).join('');
+      `;
+    }
+
+    let errorDetailsHtml = '';
+    if (errorDetails) {
+      errorDetailsHtml = `
+        <div class="error-details-box">
+          <div class="error-details-title">错误详情：</div>
+          <div class="error-details-content">${escapeHtml(errorDetails)}</div>
+        </div>
+      `;
+    }
+
+    let pathInfoHtml = '';
+    if (outputDir) {
+      pathInfoHtml = `
+        <div class="info-box info-box-highlight">
+          <span class="info-box-icon">📁</span>
+          <div class="info-box-content">
+            <div class="info-box-title">保存位置</div>
+            <div class="info-box-text path-text">${escapeHtml(outputDir)}</div>
+          </div>
+        </div>
+        <div class="info-box info-box-note">
+          <span class="info-box-icon">ℹ️</span>
+          <div class="info-box-content">
+            <div class="info-box-text">
+              <strong>提示：</strong>浏览器出于安全考虑，无法直接打开本地文件。请在文件资源管理器中手动导航到上述目录查看报告文件。
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    let filesSectionHtml = '';
+    if (filesHtml) {
+      filesSectionHtml = `
+        <div class="files-section">
+          <div class="files-section-title">已生成的文件</div>
+          <div class="files-list">
+            ${filesHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    const iconEmoji = success ? '✅' : '❌';
+    const iconClass = success ? 'modal-icon-success' : 'modal-icon-error';
 
     const modalHtml = `
-      <div id="save-success-modal" class="modal active" style="z-index: 3000;">
-        <div class="modal-content" style="max-width: 520px;">
-          <div class="modal-header" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, transparent 100%); border-bottom-color: rgba(16, 185, 129, 0.3);">
-            <h3 style="display: flex; align-items: center; gap: 0.5rem;">
-              <span style="font-size: 1.5rem;">✅</span>
-              报告保存成功
-            </h3>
-            <button class="modal-close" onclick="document.getElementById('save-success-modal').remove()">&times;</button>
+      <div id="save-result-modal" class="modal active">
+        <div class="modal-content modal-content-save">
+          <div class="modal-header modal-header-${success ? 'success' : 'error'}">
+            <div class="modal-title-wrapper">
+              <span class="modal-icon ${iconClass}">${iconEmoji}</span>
+              <h3 class="modal-title">${escapeHtml(title)}</h3>
+            </div>
+            <button class="modal-close" id="save-result-close">&times;</button>
           </div>
-          <div class="modal-body" style="padding: 1.5rem;">
-            <div style="margin-bottom: 1rem;">
-              <div style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 1rem; background: rgba(99, 102, 241, 0.08); border-radius: 8px; border-left: 3px solid #6366f1;">
-                <span style="font-size: 1.25rem;">📁</span>
-                <div>
-                  <div style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.25rem;">保存位置</div>
-                  <div style="font-family: 'Fira Code', Consolas, Monaco, monospace; font-size: 0.875rem; word-break: break-all; color: #f8fafc;">${data.outputDir}</div>
-                </div>
-              </div>
-            </div>
-            
-            <div style="margin-bottom: 1rem;">
-              <div style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem; color: #94a3b8;">已生成的文件</div>
-              <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                ${filesList}
-              </div>
-            </div>
-            
-            <div style="padding: 1rem; background: rgba(245, 158, 11, 0.08); border-radius: 8px; border-left: 3px solid #f59e0b;">
-              <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
-                <span style="font-size: 1.25rem;">💡</span>
-                <div>
-                  <div style="font-weight: 600; margin-bottom: 0.25rem; color: #f8fafc;">关于 PDF 报告</div>
-                  <div style="font-size: 0.8125rem; color: #94a3b8; line-height: 1.6;">
-                    由于浏览器安全限制，无法直接生成 PDF 文件。您可以：<br>
-                    1. 打开 HTML 报告文件<br>
-                    2. 按 <kbd style="display: inline-block; padding: 0.125rem 0.375rem; background: #334155; border: 1px solid #475569; border-radius: 4px; font-family: monospace; font-size: 0.75rem; margin: 0 0.125rem;">Ctrl</kbd> + <kbd style="display: inline-block; padding: 0.125rem 0.375rem; background: #334155; border: 1px solid #475569; border-radius: 4px; font-family: monospace; font-size: 0.75rem; margin: 0 0.125rem;">P</kbd><br>
-                    3. 选择"保存为 PDF"即可
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(59, 130, 246, 0.05); border-radius: 6px; font-size: 0.75rem; color: #64748b; line-height: 1.5;">
-              <strong>ℹ️ 提示：</strong>浏览器出于安全考虑，无法直接访问本地文件系统的完整路径。以上路径信息由服务器端生成，您可以在文件资源管理器中手动打开该目录查看报告文件。
-            </div>
+          <div class="modal-body">
+            ${message ? `<p class="result-message">${escapeHtml(message)}</p>` : ''}
+            ${pathInfoHtml}
+            ${filesSectionHtml}
+            ${pdfGuideHtml}
+            ${errorDetailsHtml}
           </div>
-          <div class="modal-footer" style="padding: 1rem 1.5rem; border-top: 1px solid #334155; display: flex; justify-content: flex-end; gap: 0.75rem;">
-            <button class="btn btn-outline" onclick="document.getElementById('save-success-modal').remove();">知道了</button>
+          <div class="modal-footer modal-footer-single">
+            <button class="btn btn-primary" id="save-result-confirm">知道了</button>
           </div>
         </div>
       </div>
@@ -786,11 +839,26 @@ document.addEventListener('DOMContentLoaded', function() {
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
-    const modal = document.getElementById('save-success-modal');
+    const modal = document.getElementById('save-result-modal');
+    const closeBtn = document.getElementById('save-result-close');
+    const confirmBtn = document.getElementById('save-result-confirm');
+
+    function closeModal() {
+      if (modal) {
+        modal.remove();
+      }
+    }
+
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closeModal);
+    }
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', closeModal);
+    }
     if (modal) {
       modal.addEventListener('click', (e) => {
         if (e.target === modal) {
-          modal.remove();
+          closeModal();
         }
       });
     }
@@ -800,11 +868,18 @@ document.addEventListener('DOMContentLoaded', function() {
     if (isSaving) return;
     
     if (!reportData) {
-      showToast('没有可保存的报告，请先扫描目录', 'error');
+      showSaveResultModal({
+        success: false,
+        title: '无法保存',
+        message: '没有可保存的报告，请先扫描目录',
+        errorDetails: '当前页面没有扫描数据，请先选择目录并执行扫描操作。'
+      });
       return;
     }
     
     updateSaveButtonState('loading');
+    
+    let responseText = '';
     
     try {
       const response = await fetch('/api/save-report', {
@@ -815,32 +890,87 @@ document.addEventListener('DOMContentLoaded', function() {
         body: JSON.stringify({ outputPath: './output' })
       });
       
+      responseText = await response.text();
+      
       let data;
       try {
-        data = await response.json();
+        data = JSON.parse(responseText);
       } catch (parseError) {
-        throw new Error('服务器返回格式错误，请检查服务器状态');
+        throw new Error(`服务器返回格式错误\n响应内容：${responseText.substring(0, 200)}${responseText.length > 200 ? '...' : ''}`);
+      }
+      
+      if (!data) {
+        throw new Error('服务器返回空响应');
       }
       
       if (data.success) {
         updateSaveButtonState('success');
-        showSaveSuccessDialog(data);
-        showToast('报告保存成功！', 'success');
+        
+        const files = data.files || [];
+        if (data.paths && !files.length) {
+          if (data.paths.json) {
+            files.push({
+              name: data.paths.json.split(/[/\\]/).pop(),
+              type: 'json',
+              path: data.paths.json
+            });
+          }
+          if (data.paths.html) {
+            files.push({
+              name: data.paths.html.split(/[/\\]/).pop(),
+              type: 'html',
+              path: data.paths.html
+            });
+          }
+        }
+        
+        const hasHtml = files.some(f => f.type === 'html');
+        
+        showSaveResultModal({
+          success: true,
+          title: '报告保存成功',
+          message: data.message || '报告文件已生成并保存',
+          outputDir: data.outputDir || (data.paths && Object.values(data.paths)[0]?.replace(/[/\\][^/\\]*$/, '')),
+          files: files,
+          showPdfGuide: hasHtml
+        });
+        
+        showToast('报告保存成功', 'success');
       } else {
         updateSaveButtonState('error');
+        
+        showSaveResultModal({
+          success: false,
+          title: '保存失败',
+          message: data.message || '服务器返回错误',
+          errorDetails: data.error || `HTTP 状态码：${response.status}`
+        });
+        
         showToast(data.message || '保存失败', 'error');
       }
+      
     } catch (error) {
       updateSaveButtonState('error');
       
-      let errorMessage = '保存失败';
+      let errorMessage = error.message;
+      let errorDetails = '';
+      
       if (error.message.includes('Failed to fetch')) {
-        errorMessage = '网络连接失败，请检查服务器是否正常运行';
+        errorMessage = '网络连接失败';
+        errorDetails = '无法连接到服务器，请检查：\n1. 服务器是否正在运行\n2. 网络连接是否正常\n3. 防火墙设置是否阻止了连接';
       } else if (error.message.includes('格式错误')) {
-        errorMessage = error.message;
+        errorMessage = '服务器返回格式错误';
+        errorDetails = error.message;
       } else {
-        errorMessage = error.message;
+        errorDetails = `错误类型：${error.name || '未知'}\n错误信息：${error.message}\n\n堆栈跟踪：${error.stack || '无'}`;
       }
+      
+      showSaveResultModal({
+        success: false,
+        title: '保存失败',
+        message: errorMessage,
+        errorDetails: errorDetails
+      });
       
       showToast(errorMessage, 'error');
     }
