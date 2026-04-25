@@ -27,23 +27,79 @@
               <h3>选择内容目录</h3>
               <span class="panel-desc">选择或输入要扫描的内容目录路径</span>
             </div>
-            <div class="scan-input-group">
-              <div class="input-wrapper">
-                <input
-                  type="text"
-                  id="directory-input"
-                  placeholder="输入目录路径，例如：D:\content 或 /home/user/content"
-                  class="directory-input"
-                />
-              </div>
-              <button id="browse-btn" class="btn btn-secondary browse-btn">
-                <span class="btn-icon">📁</span>
+            <div class="scan-method-tabs">
+              <button class="scan-method-tab active" data-method="select">
+                <span class="tab-icon">📁</span>
                 <span>选择目录</span>
               </button>
-              <button id="scan-btn" class="btn btn-primary">
-                <span class="btn-icon" id="scan-icon">🔍</span>
-                <span id="scan-text">开始扫描</span>
+              <button class="scan-method-tab" data-method="manual">
+                <span class="tab-icon">✏️</span>
+                <span>手动输入路径</span>
               </button>
+            </div>
+            
+            <div class="scan-method-content" id="method-select">
+              <div class="select-directory-section">
+                <input
+                  type="file"
+                  id="directory-picker"
+                  webkitdirectory
+                  directory
+                  multiple
+                  style="display: none;"
+                />
+                <button id="select-directory-btn" class="btn btn-primary select-directory-btn">
+                  <span class="btn-icon">📁</span>
+                  <span>选择要扫描的文件夹</span>
+                </button>
+                <div class="selected-directory-info" id="selected-directory-info" style="display: none;">
+                  <div class="selected-directory-header">
+                    <span class="selected-icon">✅</span>
+                    <span class="selected-label">已选择目录：</span>
+                  </div>
+                  <div class="selected-directory-details">
+                    <div class="detail-item">
+                      <span class="detail-label">文件夹名：</span>
+                      <span class="detail-value" id="selected-dir-name">-</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="detail-label">文件数量：</span>
+                      <span class="detail-value" id="selected-file-count">-</span>
+                    </div>
+                  </div>
+                  <div class="selected-directory-actions">
+                    <button id="change-directory-btn" class="btn btn-outline btn-sm">
+                      <span class="btn-icon">🔄</span>
+                      <span>更换目录</span>
+                    </button>
+                    <button id="confirm-scan-btn" class="btn btn-primary btn-sm">
+                      <span class="btn-icon">🔍</span>
+                      <span>确认并扫描</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="scan-method-content" id="method-manual" style="display: none;">
+              <div class="scan-input-group">
+                <div class="input-wrapper">
+                  <input
+                    type="text"
+                    id="directory-input"
+                    placeholder="输入目录路径，例如：D:\content 或 /home/user/content"
+                    class="directory-input"
+                  />
+                </div>
+                <button id="browse-btn" class="btn btn-secondary browse-btn">
+                  <span class="btn-icon">�</span>
+                  <span>粘贴路径</span>
+                </button>
+                <button id="scan-btn" class="btn btn-primary">
+                  <span class="btn-icon" id="scan-icon">🔍</span>
+                  <span id="scan-text">开始扫描</span>
+                </button>
+              </div>
             </div>
             <div class="recent-paths" id="recent-paths-section" style="display: none;">
               <div class="recent-paths-header">

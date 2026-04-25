@@ -31,16 +31,55 @@ document.addEventListener('DOMContentLoaded', function() {
     const browseBtn = document.getElementById('browse-btn');
     const saveReportBtn = document.getElementById('save-report-btn');
     const rescanBtn = document.getElementById('rescan-btn');
+    const selectDirectoryBtn = document.getElementById('select-directory-btn');
+    const directoryPicker = document.getElementById('directory-picker');
+    const changeDirectoryBtn = document.getElementById('change-directory-btn');
+    const confirmScanBtn = document.getElementById('confirm-scan-btn');
     
-    scanBtn.addEventListener('click', handleScan);
-    
-    directoryInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        handleScan();
-      }
+    const methodTabs = document.querySelectorAll('.scan-method-tab');
+    methodTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        switchMethod(tab.dataset.method);
+      });
     });
     
-    browseBtn.addEventListener('click', handleBrowse);
+    if (selectDirectoryBtn && directoryPicker) {
+      selectDirectoryBtn.addEventListener('click', () => {
+        directoryPicker.click();
+      });
+    }
+    
+    if (directoryPicker) {
+      directoryPicker.addEventListener('change', handleDirectorySelection);
+    }
+    
+    if (changeDirectoryBtn) {
+      changeDirectoryBtn.addEventListener('click', () => {
+        if (directoryPicker) {
+          directoryPicker.click();
+        }
+      });
+    }
+    
+    if (confirmScanBtn) {
+      confirmScanBtn.addEventListener('click', handleConfirmScan);
+    }
+    
+    if (scanBtn) {
+      scanBtn.addEventListener('click', handleScan);
+    }
+    
+    if (directoryInput) {
+      directoryInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          handleScan();
+        }
+      });
+    }
+    
+    if (browseBtn) {
+      browseBtn.addEventListener('click', handleBrowse);
+    }
     
     if (saveReportBtn) {
       saveReportBtn.addEventListener('click', handleSaveReport);
@@ -75,6 +114,165 @@ document.addEventListener('DOMContentLoaded', function() {
     
     initModal();
     initFolderModal();
+  }
+  
+  function switchMethod(method) {
+    const methodTabs = document.querySelectorAll('.scan-method-tab');
+    const methodSelect = document.getElementById('method-select');
+    const methodManual = document.getElementById('method-manual');
+    
+    methodTabs.forEach(tab => {
+      tab.classList.remove('active');
+      if (tab.dataset.method === method) {
+        tab.classList.add('active');
+      }
+    });
+    
+    if (methodSelect) {
+      methodSelect.style.display = method === 'select' ? 'block' : 'none';
+    }
+    
+    if (methodManual) {
+      methodManual.style.display = method === 'manual' ? 'block' : 'none';
+    }
+  }
+  
+  let selectedDirectoryFiles = [];
+  let selectedDirectoryName = '';
+  
+  function handleDirectorySelection(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) {
+      showToast('未选择任何目录', 'warning');
+      return;
+    }
+    
+    selectedDirectoryFiles = Array.from(files);
+    
+    const firstFile = selectedDirectoryFiles[0];
+    const webkitPath = firstFile.webkitRelativePath || firstFile.relativePath || '';
+    const pathParts = webkitPath.split(/[/\\]/);
+    selectedDirectoryName = pathParts[0] || '未知目录';
+    
+    const mdCount = selectedDirectoryFiles.filter(f => 
+      f.name.endsWith('.md') || f.name.endsWith('.markdown')
+    ).length;
+    const imgCount = selectedDirectoryFiles.filter(f => {
+      const ext = f.name.toLowerCase().split('.').pop();
+      return ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp'].includes(ext);
+    }).length;
+    
+    showSelectedDirectoryInfo(selectedDirectoryName, selectedDirectoryFiles.length, mdCount, imgCount);
+    
+    showToast(`已选择目录：${selectedDirectoryName}（${selectedDirectoryFiles.length} 个文件）`, 'success');
+  }
+  
+  function showSelectedDirectoryInfo(dirName, totalCount, mdCount, imgCount) {
+    const selectDirectoryBtn = document.getElementById('select-directory-btn');
+    const selectedDirectoryInfo = document.getElementById('selected-directory-info');
+    const selectedDirName = document.getElementById('selected-dir-name');
+    const selectedFileCount = document.getElementById('selected-file-count');
+    
+    if (selectDirectoryBtn) {
+      selectDirectoryBtn.style.display = 'none';
+    }
+    
+    if (selectedDirectoryInfo) {
+      selectedDirectoryInfo.style.display = 'block';
+    }
+    
+    if (selectedDirName) {
+      selectedDirName.textContent = dirName;
+    }
+    
+    if (selectedFileCount) {
+      selectedFileCount.textContent = `${totalCount} 个文件（${mdCount} 个文档，${imgCount} 个图片）`;
+    }
+  }
+  
+  async function handleConfirmScan() {
+    if (!selectedDirectoryFiles || selectedDirectoryFiles.length === 0) {
+      showToast('请先选择目录', 'warning');
+      return;
+    }
+    
+    showToast('正在准备扫描...', 'info');
+    
+    try {
+      let matchedPath = null;
+      
+      if (recentPathsCache && recentPathsCache.length > 0) {
+        for (const recentPath of recentPathsCache) {
+          const pathParts = recentPath.split(/[/\\]/);
+          const lastDirName = pathParts[pathParts.length - 1] || pathParts[pathParts.length - 2];
+          
+          if (lastDirName && lastDirName.toLowerCase() === selectedDirectoryName.toLowerCase()) {
+            matchedPath = recentPath;
+            break;
+          }
+        }
+      }
+      
+      if (matchedPath) {
+        showToast(`找到匹配的最近路径：${matchedPath}`, 'info');
+        
+        currentDirectory = matchedPath;
+        
+        isScanning = true;
+        updateScanButtonState('scanning');
+        hideStatus();
+        hideResults(true);
+        showStatus('scanning', '正在扫描...', '请稍候，正在分析目录内容...');
+        
+        const response = await fetch('/api/scan', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ directory: matchedPath })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          if (data.status === 'empty_directory') {
+            updateScanButtonState('empty');
+            showStatus('empty', '目录为空', data.message);
+            showToast(data.message, 'warning');
+          } else if (data.report) {
+            reportData = data.report;
+            await loadRecentPaths();
+            updateScanButtonState('success');
+            showResults(true);
+            renderReport();
+            showToast('扫描完成！发现 ' + data.report.statistics.totalMarkdowns + ' 个文档', 'success');
+          }
+        } else {
+          updateScanButtonState('error');
+          showStatus('error', '扫描失败', data.message);
+          showToast(data.message, 'error');
+        }
+      } else {
+        showToast('未找到匹配的最近路径：' + selectedDirectoryName, 'warning');
+        
+        switchMethod('manual');
+        
+        const directoryInput = document.getElementById('directory-input');
+        if (directoryInput) {
+          directoryInput.placeholder = `请输入 "${selectedDirectoryName}" 的完整路径，例如：C:\\Users\\Name\\${selectedDirectoryName}`;
+          directoryInput.focus();
+        }
+        
+        showToast('请手动输入目录的完整路径', 'info');
+      }
+      
+    } catch (error) {
+      updateScanButtonState('error');
+      showStatus('error', '扫描失败', '网络错误: ' + error.message);
+      showToast('扫描失败: ' + error.message, 'error');
+    } finally {
+      isScanning = false;
+    }
   }
   
   function initFolderModal() {
