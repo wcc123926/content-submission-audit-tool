@@ -158,36 +158,39 @@ document.addEventListener('DOMContentLoaded', function() {
       validateFolderPath();
     }
     
-    if (quickPathsSection && quickPathsList && recentPathsCache.length > 0) {
+    if (quickPathsSection && quickPathsList) {
       quickPathsSection.style.display = 'block';
       
-      let html = '';
-      recentPathsCache.forEach((path, index) => {
-        html += `
-          <button class="quick-path-item" data-path="${escapeHtml(path)}" title="${escapeHtml(path)}">
-            <span class="quick-path-icon">🕐</span>
-            <span class="quick-path-text">${escapeHtml(truncatePath(path, 45))}</span>
-          </button>
-        `;
-      });
-      quickPathsList.innerHTML = html;
-      
-      quickPathsList.querySelectorAll('.quick-path-item').forEach(item => {
-        item.addEventListener('click', () => {
-          const path = item.dataset.path;
-          if (folderPathInput) {
-            folderPathInput.value = path;
-            validateFolderPath();
-          }
+      if (recentPathsCache.length > 0) {
+        let html = '';
+        recentPathsCache.forEach((path, index) => {
+          html += `
+            <button class="quick-path-item" data-path="${escapeHtml(path)}" title="${escapeHtml(path)}">
+              <span class="quick-path-icon">🕐</span>
+              <span class="quick-path-text">${escapeHtml(truncatePath(path, 45))}</span>
+            </button>
+          `;
         });
-      });
-    } else if (quickPathsSection) {
-      quickPathsSection.style.display = 'none';
+        quickPathsList.innerHTML = html;
+        
+        quickPathsList.querySelectorAll('.quick-path-item').forEach(item => {
+          item.addEventListener('click', () => {
+            const path = item.dataset.path;
+            if (folderPathInput) {
+              folderPathInput.value = path;
+              validateFolderPath();
+              showToast('已选择目录路径', 'success');
+            }
+          });
+        });
+      } else {
+        quickPathsList.innerHTML = '<p class="empty-paths-text">暂无最近扫描记录</p>';
+      }
     }
     
     folderModal.classList.add('active');
     
-    if (folderPathInput) {
+    if (folderPathInput && !recentPathsCache.length) {
       setTimeout(() => folderPathInput.focus(), 100);
     }
   }
@@ -199,6 +202,111 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
+  function isValidWindowsPath(path) {
+    if (!path || path.length === 0) return false;
+    
+    const trimmedPath = path.trim();
+    
+    const windowsDrivePattern = /^[A-Za-z]:[\\\/]/;
+    const isWindowsDrive = windowsDrivePattern.test(trimmedPath);
+    
+    const uncPattern = /^\\\\[^\\]+/;
+    const isUNC = uncPattern.test(trimmedPath);
+    
+    if (!isWindowsDrive && !isUNC) {
+      return false;
+    }
+    
+    const pathParts = trimmedPath.split(/[\\\/]+/);
+    for (let i = 1; i < pathParts.length; i++) {
+      const part = pathParts[i];
+      if (part === '') continue;
+      
+      if (/[<>:"|?*]/.test(part)) {
+        return false;
+      }
+      
+      if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$/i.test(part)) {
+        return false;
+      }
+      
+      if (/[ .]$/.test(part)) {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+  
+  function isValidUnixPath(path) {
+    if (!path || path.length === 0) return false;
+    
+    const trimmedPath = path.trim();
+    
+    if (!trimmedPath.startsWith('/')) {
+      return false;
+    }
+    
+    const pathParts = trimmedPath.split(/\/+/);
+    for (let i = 1; i < pathParts.length; i++) {
+      const part = pathParts[i];
+      if (part === '') continue;
+      
+      if (part.includes('\0')) {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+  
+  function cleanPath(path) {
+    if (!path) return path;
+    
+    let cleaned = path.trim();
+    
+    cleaned = cleaned.replace(/^"|"$/g, '');
+    cleaned = cleaned.replace(/^'|'$/g, '');
+    
+    return cleaned.trim();
+  }
+  
+  function isValidPath(path) {
+    if (!path || path.length === 0) return false;
+    
+    const trimmedPath = cleanPath(path);
+    
+    if (!trimmedPath || trimmedPath.length === 0) {
+      return { valid: false, type: 'empty', message: '请输入目录路径' };
+    }
+    
+    if (isValidWindowsPath(trimmedPath)) {
+      return { valid: true, type: 'windows', cleanedPath: trimmedPath };
+    }
+    
+    if (isValidUnixPath(trimmedPath)) {
+      return { valid: true, type: 'unix', cleanedPath: trimmedPath };
+    }
+    
+    if (/^[A-Za-z]:$/.test(trimmedPath)) {
+      return { valid: false, type: 'incomplete', message: '请输入完整的目录路径（如：C:\\Users）' };
+    }
+    
+    if (/^[A-Za-z]:[\\\/]$/.test(trimmedPath)) {
+      return { valid: true, type: 'windows', cleanedPath: trimmedPath };
+    }
+    
+    if (/^[A-Za-z]:/.test(trimmedPath)) {
+      return { valid: false, type: 'invalid_windows', message: '路径格式不正确，请检查路径分隔符和特殊字符' };
+    }
+    
+    if (trimmedPath.includes('\\') && !trimmedPath.startsWith('\\')) {
+      return { valid: false, type: 'invalid_windows', message: 'Windows 路径应以盘符开头（如：C:\\）' };
+    }
+    
+    return { valid: false, type: 'unknown', message: '路径格式不正确，请输入有效的绝对路径' };
+  }
+  
   function validateFolderPath() {
     const folderPathInput = document.getElementById('folder-path-input');
     const pathValidation = document.getElementById('path-validation');
@@ -206,23 +314,29 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (!folderPathInput || !pathValidation) return;
     
-    const path = folderPathInput.value.trim();
+    const rawPath = folderPathInput.value;
+    const cleanedPath = cleanPath(rawPath);
     
-    if (!path) {
+    if (rawPath !== cleanedPath && cleanedPath) {
+      folderPathInput.value = cleanedPath;
+    }
+    
+    if (!cleanedPath) {
       pathValidation.innerHTML = '';
       if (folderModalConfirm) folderModalConfirm.disabled = true;
       return;
     }
     
-    const invalidChars = /[<>:"|?*]/;
-    const hasInvalidChars = invalidChars.test(path);
+    const result = isValidPath(cleanedPath);
     
-    if (hasInvalidChars) {
-      pathValidation.innerHTML = '<span class="validation-error">❌ 路径包含非法字符</span>';
-      if (folderModalConfirm) folderModalConfirm.disabled = true;
-    } else {
-      pathValidation.innerHTML = '<span class="validation-success">✓ 路径格式有效</span>';
+    if (result.valid) {
+      const typeText = result.type === 'windows' ? 'Windows 路径' : 'Unix 路径';
+      pathValidation.innerHTML = `<span class="validation-success">✓ 路径格式有效 (${typeText})</span>`;
       if (folderModalConfirm) folderModalConfirm.disabled = false;
+    } else {
+      const errorMessage = result.message || '路径格式不正确';
+      pathValidation.innerHTML = `<span class="validation-error">❌ ${errorMessage}</span>`;
+      if (folderModalConfirm) folderModalConfirm.disabled = true;
     }
   }
   

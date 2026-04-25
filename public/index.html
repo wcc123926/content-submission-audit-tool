@@ -35,12 +35,11 @@
                   placeholder="输入目录路径，例如：D:\content 或 /home/user/content"
                   class="directory-input"
                 />
-                <div class="input-actions">
-                  <button id="browse-btn" class="btn btn-icon" title="浏览文件夹">
-                    📁
-                  </button>
-                </div>
               </div>
+              <button id="browse-btn" class="btn btn-secondary browse-btn">
+                <span class="btn-icon">📁</span>
+                <span>选择目录</span>
+              </button>
               <button id="scan-btn" class="btn btn-primary">
                 <span class="btn-icon" id="scan-icon">🔍</span>
                 <span id="scan-text">开始扫描</span>
@@ -294,37 +293,20 @@
           <button class="modal-close" id="folder-modal-close">&times;</button>
         </div>
         <div class="modal-body">
-          <div class="folder-help-section">
-            <div class="help-step">
-              <div class="step-number">1</div>
-              <div class="step-content">
-                <h4>复制文件夹路径</h4>
-                <p>在文件资源管理器中，找到目标文件夹，按住 <kbd>Shift</kbd> 并右键点击文件夹，选择"复制为路径"</p>
-              </div>
-            </div>
-            <div class="help-step">
-              <div class="step-number">2</div>
-              <div class="step-content">
-                <h4>粘贴到下方输入框</h4>
-                <p>或者直接点击"粘贴"按钮，自动粘贴剪贴板中的路径</p>
-              </div>
-            </div>
-            <div class="help-step">
-              <div class="step-number">3</div>
-              <div class="step-content">
-                <h4>开始扫描</h4>
-                <p>点击"确认"按钮，将路径填入主界面并开始扫描</p>
-              </div>
+          <div class="quick-paths-section" id="quick-paths-section">
+            <label class="input-label">📌 最近扫描过的目录</label>
+            <div class="quick-paths-list" id="quick-paths-list">
+              <p class="empty-paths-text">暂无最近扫描记录</p>
             </div>
           </div>
           
           <div class="folder-input-section">
-            <label class="input-label">文件夹路径</label>
+            <label class="input-label">手动输入路径</label>
             <div class="folder-input-wrapper">
               <input
                 type="text"
                 id="folder-path-input"
-                placeholder="粘贴文件夹路径到这里..."
+                placeholder="例如：C:\Users\Name\Documents 或 /home/user/content"
                 class="folder-path-input"
               />
               <button id="paste-btn" class="btn btn-secondary paste-btn">
@@ -335,14 +317,18 @@
             <div class="path-validation" id="path-validation"></div>
           </div>
           
-          <div class="quick-paths-section" id="quick-paths-section" style="display: none;">
-            <label class="input-label">📌 快速选择（最近扫描）</label>
-            <div class="quick-paths-list" id="quick-paths-list"></div>
+          <div class="folder-help-section">
+            <div class="help-tip">
+              <span class="help-icon">�</span>
+              <div class="help-text">
+                <strong>提示：</strong>在文件资源管理器中，按住 <kbd>Shift</kbd> 并右键点击文件夹，选择"复制为路径"，然后点击上方"粘贴"按钮。
+              </div>
+            </div>
           </div>
           
           <div class="modal-footer">
             <button id="folder-modal-cancel" class="btn btn-outline">取消</button>
-            <button id="folder-modal-confirm" class="btn btn-primary">
+            <button id="folder-modal-confirm" class="btn btn-primary" disabled>
               <span class="btn-icon">✅</span>
               确认并扫描
             </button>
